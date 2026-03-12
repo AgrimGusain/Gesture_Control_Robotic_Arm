@@ -1,99 +1,245 @@
-# gesture_MeArm
+# Hand Gesture Controlled Robotic Arm
+## MediaPipe 0.10.32 Version
 
-[English](README.md) | [繁體中文](README_zh.md)
+This project uses MediaPipe 0.10.32 hand tracking to control a robotic arm with 4 servos via ESP32.
 
-This is a simple gesture recognition program for the MeArm. It uses the MediaPipe to detect hand gestures and control the MeArm.
+## 🎯 Features
+- Real-time hand tracking using MediaPipe 0.10.32
+- Automatic model download on first run
+- 4-axis servo control (X, Y, Z, Claw)
+- Fist detection for claw control
+- Video recording capability
+- Debug mode for testing without hardware
 
-### [MediaPipe Hand tracking](https://google.github.io/mediapipe/solutions/hands)
-### [MeArm](https://www.instructables.com/Pocket-Sized-Robot-Arm-meArm-V04)
+## 📋 Hardware Requirements
+- ESP32 development board
+- 4 servo motors (SG90 or similar)
+- USB cable for ESP32
+- Camera (USB webcam or phone via IP Webcam app)
+- Power supply for servos (5V recommended)
 
-![image](images/1.jpg)
+## 🔌 Wiring
 
-https://www.youtube.com/watch?v=TBRi6ecgQfc
-# How to use
-## Circuit connection
-Servo define like this picture.
+Connect servos to ESP32 GPIO pins:
+- **Servo 0 (X-axis)**: GPIO 18
+- **Servo 1 (Y-axis)**: GPIO 19
+- **Servo 2 (Z-axis)**: GPIO 21
+- **Servo 3 (Claw)**: GPIO 22
 
-![Servo](images/3.jpg)
-![Circuit](images/2.jpg)
+**Important:** Servos should have their own power supply. Connect:
+- Servo signal wires → ESP32 GPIO pins
+- Servo power (VCC) → External 5V supply
+- Servo ground (GND) → Common ground with ESP32
 
-# **!! Important  don't use the software serial, it will cause the servo jitter.**
+## 🔧 ESP32 Setup
 
-## Upload the code to the Arduino
-Change the initial position of the servo motor in the code.
-```c++
-int default_angle[4] = {75, 90, 90, 60};
-```
-**make sure remove the bluetooth module from serial pin then upload the code.**
-## Install the required libraries
+### 1. Install Arduino IDE and ESP32 Support
+
+1. Download and install [Arduino IDE](https://www.arduino.cc/en/software)
+
+2. Add ESP32 board support:
+   - Open Arduino IDE
+   - Go to **File → Preferences**
+   - Add to "Additional Board Manager URLs":
+     ```
+     https://dl.espressif.com/dl/package_esp32_index.json
+     ```
+   - Go to **Tools → Board → Boards Manager**
+   - Search for "ESP32"
+   - Install "**esp32 by Espressif Systems**"
+
+### 2. Install ESP32Servo Library
+
+1. Go to **Sketch → Include Library → Manage Libraries**
+2. Search for "**ESP32Servo**"
+3. Install "**ESP32Servo by Kevin Harrington**"
+
+### 3. Upload Code to ESP32
+
+1. Open `esp32_servo_controller.ino` in Arduino IDE
+2. Select your board: **Tools → Board → ESP32 Arduino → ESP32 Dev Module** (or your specific board)
+3. Select the COM port: **Tools → Port → COM# (ESP32)**
+4. Click **Upload** button
+5. Wait for "Done uploading" message
+
+## 🐍 Python Setup
+
+### 1. Install Python Dependencies
+
 ```bash
-cd python
+# Create virtual environment (optional but recommended)
+python -m venv venv
+
+# Activate virtual environment
+# On Windows:
+venv\Scripts\activate
+# On Linux/Mac:
+source venv/bin/activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-## Set up webcam
- you can use the normal webcam or an android phone as a webcam through [Droidcam](https://play.google.com/store/apps/details?id=com.dev47apps.droidcam) app.
+### 2. Configure Settings
 
- change the cam_source in the code.
- ```python
-cam_source = "http://192.168.1.100:4747/video"
-# 0,1 for usbcam, "http://192.168.1.165:4747/video" for webcam
- ```
+Edit `main.py` to configure:
 
-## Change the configuration
-
-First, you need to know the servo movement range of your MeArm.
-
-Then, change the configuration in the python code.
 ```python
-x_min = 0
-x_mid = 75
-x_max = 150
+# Line 11-12: Set debug mode and camera source
+debug = True  # Set to False when ready to connect to ESP32
+cam_source = 0  # 0 for USB webcam, "http://192.168.1.100:4747/video" for IP webcam
 
-y_min = 0
-y_mid = 90
-y_max = 180
-
-z_min = 10
-z_mid = 90
-z_max = 180
-
-claw_open_angle = 60
-claw_close_angle = 0
+# Line 15: Set serial port (when debug = False)
+ser = serial.Serial('COM4', 115200)  # Change COM4 to your ESP32's port
+# Windows: 'COM3', 'COM4', etc.
+# Linux: '/dev/ttyUSB0', '/dev/ttyACM0'
+# Mac: '/dev/cu.usbserial-XXXX'
 ```
 
-Sencond, make sure the debug mode is on.
-```python
-debug = True
-```
-Due to different camera viewing angles and resolutions, it may need test and then change the values of the following parameters.
-```python
-# use angle between wrist and index finger to control x axis
-palm_angle_min = -50
-palm_angle_mid = 20
+### 3. Run the Application
 
-# use wrist y to control y axis
-wrist_y_min = 0.3
-wrist_y_max = 0.9
-
-# use palm size to control z axis
-plam_size_min = 0.1
-plam_size_max = 0.3
-
-
-fist_threshold = 7
-```
-
-## Finally, run the code and enjoy it.
-make sure the com port is correct.
-```python
-ser = serial.Serial('COM4', 115200)
-```
-change debug mode to False.
-```python
-debug = False
-```
-run the code.
 ```bash
 python main.py
 ```
+
+On **first run**, the script will automatically download the MediaPipe hand tracking model (~26 MB). This only happens once.
+
+## 🎮 How to Use
+
+### Hand Controls:
+- **X-axis (Servo 0)**: Hand rotation (angle between wrist and index finger)
+- **Y-axis (Servo 1)**: Hand vertical position (up/down)
+- **Z-axis (Servo 2)**: Hand distance from camera (forward/backward)
+- **Claw (Servo 3)**: 
+  - Open hand = Claw opens
+  - Make a fist = Claw closes
+
+### Keyboard Controls:
+- **ESC key**: Exit the program
+
+### Tips:
+1. Show **only ONE hand** in the camera view
+2. Ensure **good lighting** for better detection
+3. Keep hand **clearly visible** to the camera
+4. Start in **debug mode** to test without hardware
+
+## 🔍 Troubleshooting
+
+### Model Download Issues
+**Problem:** Model fails to download automatically
+
+**Solution:**
+- Download manually from: https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task
+- Save as `hand_landmarker.task` in the same folder as `main.py`
+
+### Camera Not Working
+**Problem:** "Cannot open camera source" error
+
+**Solutions:**
+- Try different camera sources: `cam_source = 0`, `1`, or `2`
+- For IP Webcam app: ensure phone and PC are on same network
+- Check camera permissions
+- Test camera with another app first
+
+### ESP32 Not Found
+**Problem:** Arduino IDE doesn't show ESP32 port
+
+**Solutions:**
+- Install CP2102 or CH340 USB drivers (depends on your ESP32)
+- Try a different USB cable (must be data cable, not charging-only)
+- Press the BOOT button on ESP32 while uploading
+- Check Device Manager (Windows) to see if device is recognized
+
+### Hand Not Detected
+**Problem:** No hand landmarks shown
+
+**Solutions:**
+- Improve lighting conditions
+- Move hand closer to camera
+- Ensure hand is clearly visible with fingers spread
+- Adjust `min_hand_detection_confidence` in code (lower = more sensitive)
+
+### Servos Not Responding
+**Problem:** Servos don't move when hand gestures are detected
+
+**Solutions:**
+1. Verify debug mode is OFF: `debug = False`
+2. Check serial port is correct
+3. Verify ESP32 is powered and code is uploaded
+4. Check servo wiring and power supply
+5. Open Arduino Serial Monitor (115200 baud) to see if ESP32 is receiving data
+
+### Jerky/Unstable Movement
+**Problem:** Servos move erratically
+
+**Solutions:**
+- Add smoothing by adjusting detection thresholds
+- Use external power supply for servos (ESP32 can't power servos)
+- Check servo connections
+- Reduce `min_tracking_confidence` for smoother tracking
+
+## 📝 Configuration Options
+
+### Servo Angle Ranges (in `main.py`):
+```python
+x_min, x_mid, x_max = 0, 75, 150
+y_min, y_mid, y_max = 0, 90, 180
+z_min, z_mid, z_max = 10, 90, 180
+claw_open_angle, claw_close_angle = 60, 0
+```
+
+### Hand Detection Ranges:
+```python
+palm_angle_min, palm_angle_mid = -50, 20
+wrist_y_min, wrist_y_max = 0.3, 0.9
+palm_size_min, palm_size_max = 0.1, 0.3
+```
+
+### Fist Detection Sensitivity:
+```python
+fist_threshold = 7  # Lower = easier to trigger, Higher = harder to trigger
+```
+
+## 🔒 Safety Notes
+
+⚠️ **Important Safety Guidelines:**
+- Always test servos individually before assembly
+- Use appropriate power supply (5V, 2A+ for multiple servos)
+- Keep fingers away from moving parts
+- Add physical limits/stoppers to prevent over-rotation
+- The system returns to default position after 1 second of no data
+- Start with `debug = True` to test safely without hardware
+
+## 📊 System Information
+
+- **MediaPipe Version**: 0.10.32 (Tasks API)
+- **Model**: Hand Landmarker (Float16)
+- **Python**: 3.8+
+- **OpenCV**: 4.7.0.68
+- **Serial**: pyserial 3.5
+
+## 🆘 Getting Help
+
+If you encounter issues:
+1. Check the troubleshooting section above
+2. Verify all connections and settings
+3. Test components individually (camera, ESP32, servos)
+4. Check that model file exists: `hand_landmarker.task`
+5. Review console output for error messages
+
+## 📄 Files Included
+
+- `main.py` - Main Python application (MediaPipe 0.10.32)
+- `esp32_servo_controller.ino` - ESP32 Arduino code
+- `requirements.txt` - Python dependencies
+- `README.md` - This file
+
+## 🎓 Learning Resources
+
+- [MediaPipe Hand Landmarker](https://developers.google.com/mediapipe/solutions/vision/hand_landmarker)
+- [ESP32 Arduino Documentation](https://docs.espressif.com/projects/arduino-esp32/)
+- [ESP32Servo Library](https://github.com/madhephaestus/ESP32Servo)
+
+---
+
+**Enjoy your hand-controlled robotic arm! 🤖✋**
